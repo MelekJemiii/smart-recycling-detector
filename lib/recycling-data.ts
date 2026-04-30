@@ -109,7 +109,7 @@ const KEYWORD_MAP: Record<string, RecyclingCategory> = {
 
   // Hazardous
   paint: "hazardous",
-  battery: "hazardous",
+  "lithium battery": "hazardous",
   chemical: "hazardous",
   "motor oil": "hazardous",
   pesticide: "hazardous",
