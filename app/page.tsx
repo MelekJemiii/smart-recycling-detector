@@ -1,65 +1,187 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState } from "react";
+import toast from "react-hot-toast";
+import ImageUploader from "./components/ImageUploader";
+import ResultCard from "./components/ResultCard";
+import RecyclingMap from "./components/RecyclingMap";
+import EnvironmentalStats from "./components/EnvironmentalStats";
+import ScanHistory from "./components/ScanHistory";
+import LoadingSpinner from "./components/LoadingSpinner";
+import type { RecyclingInfo } from "@/lib/recycling-data";
+
+interface AnalysisResult {
+  scanId: string;
+  detectedObject: string;
+  confidence: number;
+  allLabels: { description: string; score: number }[];
+  dominantColors: string[];
+  category: string;
+  recyclingInfo: RecyclingInfo;
+}
+
+export default function HomePage() {
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"scan" | "history" | "stats">("scan");
+
+  const handleImageUpload = async (base64Image: string, previewUrl: string) => {
+    setImagePreview(previewUrl);
+    setResult(null);
+    setIsAnalyzing(true);
+
+    try {
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: base64Image }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Analysis failed");
+      }
+
+      setResult(data);
+      toast.success(`Detected: ${data.detectedObject}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Analysis failed";
+      toast.error(message);
+      setResult(null);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleReset = () => {
+    setResult(null);
+    setImagePreview(null);
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="min-h-screen bg-mesh">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-green-100">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+              style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              ♻️
+            </div>
+            <div>
+              <h1
+                className="text-xl font-bold leading-none"
+                style={{ fontFamily: "var(--font-display)", color: "var(--green-900)" }}
+              >
+                RecycleAI
+              </h1>
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                Smart Recycling Detector
+              </p>
+            </div>
+          </div>
+
+          {/* Navigation Tabs */}
+          <nav className="flex gap-1 bg-green-50 p-1 rounded-xl">
+            {(["scan", "history", "stats"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-all duration-200 ${
+                  activeTab === tab
+                    ? "bg-white shadow-sm text-green-700"
+                    : "text-green-600 hover:text-green-700"
+                }`}
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                {tab === "scan" ? "🔍 Scan" : tab === "history" ? "📋 History" : "🌍 Impact"}
+              </button>
+            ))}
+          </nav>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 py-8">
+        {/* SCAN TAB */}
+        {activeTab === "scan" && (
+          <div className="space-y-8">
+            {/* Hero */}
+            {!result && !isAnalyzing && (
+              <div className="text-center py-6 animate-in">
+                <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
+                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  AI-Powered Recycling Guidance
+                </div>
+                <h2
+                  className="text-5xl font-extrabold mb-4"
+                  style={{ fontFamily: "var(--font-display)", color: "var(--green-950)" }}
+                >
+                  Know before you
+                  <span style={{ color: "var(--green-500)" }}> toss.</span>
+                </h2>
+                <p className="text-lg max-w-xl mx-auto" style={{ color: "var(--text-secondary)" }}>
+                  Upload a photo of any item and instantly discover the correct way to recycle it —
+                  saving the planet one scan at a time.
+                </p>
+              </div>
+            )}
+
+            {/* Uploader */}
+            <div className="animate-in" style={{ animationDelay: "60ms" }}>
+              <ImageUploader
+                onImageUpload={handleImageUpload}
+                isAnalyzing={isAnalyzing}
+                imagePreview={imagePreview}
+                onReset={handleReset}
+              />
+            </div>
+
+            {/* Loading */}
+            {isAnalyzing && (
+              <div className="animate-in">
+                <LoadingSpinner />
+              </div>
+            )}
+
+            {/* Result */}
+            {result && !isAnalyzing && (
+              <div className="animate-in stagger space-y-6">
+                <ResultCard result={result} />
+                <RecyclingMap detectedObject={result.detectedObject} category={result.category} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* HISTORY TAB */}
+        {activeTab === "history" && (
+          <div className="animate-in">
+            <ScanHistory />
+          </div>
+        )}
+
+        {/* STATS TAB */}
+        {activeTab === "stats" && (
+          <div className="animate-in">
+            <EnvironmentalStats />
+          </div>
+        )}
       </main>
+
+      {/* Footer */}
+      <footer className="mt-16 border-t border-green-100 bg-white/50">
+        <div
+          className="max-w-6xl mx-auto px-4 py-6 flex items-center justify-between text-sm"
+          style={{ color: "var(--text-muted)" }}
+        >
+          <span>RecycleAI — Powered by Google Vision AI</span>
+          <span>Making recycling effortless 🌱</span>
+        </div>
+      </footer>
     </div>
   );
 }
